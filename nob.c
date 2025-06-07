@@ -1,6 +1,52 @@
 #define NOB_IMPLEMENTATION
 #define NOB_STRIP_PREFIX
 #include "nob.h"
+
+#ifdef _WIN32
+#include <io.h>
+#define F_OK 0
+#define X_OK 0
+#define access _access
+#define PATH_SEPARATOR ";"
+#else
+#include <unistd.h>
+#define PATH_SEPARATOR ":"
+#endif
+
+bool find_program(
+    const char* name,
+    char* out_path,
+    size_t out_path_size
+) {
+    const char* path_env = getenv("PATH");
+    if (!path_env) return false;
+
+    size_t temp = nob_temp_save();
+
+    char* paths = temp_strdup(path_env);
+    if (!paths) return false;
+
+    char* dir = strtok(paths, PATH_SEPARATOR);
+    while(dir) {
+#ifdef _WIN32
+        snprintf(out_path, out_path_size, "%s\\%s.exe", dir, name);
+        if (access(out_path, X_OK) == 0) {
+            nob_temp_rewind(temp);
+            return true;
+        }
+#else
+        snprintf(out_path, out_path_size, "%s/%s", dir, name);
+        if (access(out_path, X_OK) == 0) {
+            nob_temp_rewind(temp);
+            return true;
+        }
+#endif
+        dir = strtok(NULL, PATH_SEPARATOR);
+    }
+    nob_temp_rewind(temp);
+    return false;
+}
+
 static bool walk_directory(
     File_Paths* dirs,
     File_Paths* c_sources,
@@ -17,7 +63,7 @@ static bool walk_directory(
         if(strcmp(ent->d_name, "..") == 0 || strcmp(ent->d_name, ".") == 0) continue;
         const char* fext = nob_get_ext(ent->d_name);
         size_t temp = nob_temp_save();
-        const char* p = nob_temp_sprintf("%s/%s", path, ent->d_name); 
+        const char* p = nob_temp_sprintf("%s/%s", path, ent->d_name);
         Nob_File_Type type = nob_get_file_type(p);
         if(type == NOB_FILE_DIRECTORY) {
             da_append(dirs, p);
@@ -39,10 +85,20 @@ static bool walk_directory(
 int main(int argc, char** argv) {
     NOB_GO_REBUILD_URSELF(argc, argv);
     char* cc = getenv("CC");
-    // TODO: automatic checks for the compiler 
-    // available on the system. Maybe default to clang on bimbows
-    if(!cc) cc = "cc";
-    setenv("CC", cc, 0);
+    if(!cc) {
+#ifdef _WIN32
+        char compiler_path[512];
+        if(find_program("clang", compiler_path, sizeof(compiler_path))) {
+            cc = "clang";
+        } else {
+            nob_log(ERROR, "Clang was not found on your system and CC was not set. Please install clang or set your CC");
+            return 2;
+        }
+#else
+        cc = "cc";
+#endif
+        setenv("CC", cc, 0);
+    }
     char* bindir = getenv("BINDIR");
     if(!bindir) bindir = "bin";
     setenv("BINDIR", bindir, 0);
@@ -76,14 +132,14 @@ int main(int argc, char** argv) {
             "-Werror",
         #endif
         );
-        // Include directories 
+        // Include directories
         cmd_append(&cmd,
             "-I", "vendor/raylib/raylib-5.5_linux_amd64/include",
             "-I", "include",
         );
         // Actual compilation
         cmd_append(&cmd,
-            "-MD", "-O1", "-c",
+            "-MD", "-O1", "-g", "-c",
             src,
             "-o", out,
         );
@@ -94,7 +150,7 @@ int main(int argc, char** argv) {
         cmd_append(&cmd, cc, "-o", exe);
         da_append_many(&cmd, objs.items, objs.count);
         // Vendor libraries we link with
-        cmd_append(&cmd, 
+        cmd_append(&cmd,
             "-Lvendor/raylib/raylib-5.5_linux_amd64/lib",
             "-l:libraylib.a"
         );
