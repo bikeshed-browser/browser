@@ -1,0 +1,38 @@
+html{
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: #0e1119;
+}
+
+ul{
+    margin-top: 10vh;
+}
+
+li{
+    list-style: none;
+    display: inline-block;
+    position: relative;
+}
+
+a{
+    animation: reveal 2s ease forwards;
+    animation-delay: 1s;
+    position: relative;
+}
+
+.container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+.text-animation{
+    z-index: 1;
+    color: #76d275;
+    font-size: 30px;
+    letter-spacing: .5rem;
+    text-transform: uppercase;
+    font-family: 'poppins',sans-serif;
+    position: relative;
+}

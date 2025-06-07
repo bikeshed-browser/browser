@@ -50,3 +50,10 @@ DEFER:
     fclose(f);
     return result;
 }
+
+void remove_carrige_return(char* content){
+    char* cur = content;
+    while ((cur = strchr(cur, '\r'))) {
+        memmove(cur, cur + 1, strlen(cur + 1) + 1);
+    }
+}
