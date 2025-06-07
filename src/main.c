@@ -83,18 +83,6 @@ int parse_attribute(const char* content, HTMLAttribute* att, const char** end) {
     return 0;
 }
 
-void dump_attributes(HTMLTag* tag) {
-    if (!tag->attributes.len) return;
-    printf("Tag has attributes, dump:\n");
-    for (size_t i = 0; i < tag->attributes.len; i++) {
-        HTMLAttribute *attr = tag->attributes.items[i];
-        printf("Tag: key(%.*s)->value(%.*s)\n",
-                (int)attr->key_len, attr->key,
-                (int)attr->value_len, attr->value
-        );
-    }
-}
-
 #define STRINGIFY0(x) # x
 #define STRINGIFY1(x) STRINGIFY0(x)
 #define todof(...) (fprintf(stderr, "TODO " __FILE__ ":" STRINGIFY1(__LINE__) ":" __VA_ARGS__), abort())
@@ -121,7 +109,6 @@ int html_parse_next_tag(const char* content, HTMLTag* tag, char** end) {
             return 0;
         }
         tag->self_closing = false;
-        dump_attributes(tag);
         content++;
         *end = (char*)content;
         return 0;
@@ -175,7 +162,10 @@ void render_html_tag(HTMLTag* tag, float fontSize, float* rx, float* ry) {
         size_t width = GetScreenWidth();
         for(size_t i = 0; i < tag->str_content_len; ++i) {
             char c = tag->str_content[i];
-            if(!isgraph(c) && c != ' ') c = '?';
+            if(isspace(c)) {
+                while(i+1 < tag->str_content_len && isspace(tag->str_content[i+1])) i++;
+                c = ' ';
+            } else if (!isgraph(c)) c = '?';
             if(x + fontSize > width) {
                 x = *rx;
                 y += fontSize;
@@ -203,6 +193,17 @@ HTMLTag* find_child_html_tag(HTMLTag* tag, const char* name) {
         if(child->name_len == name_len && memcmp(child->name, name, name_len) == 0) return child;
     }
     return NULL;
+}
+// FIXME: I know strcasecmp exists and we *can* use that on 
+// Unix systems with a flag but for now this is fine
+static int strncmp_ci(const char *restrict s1, const char *restrict s2, size_t max) {
+   while(max && *s1 && *s2 && (tolower(*s1) == tolower(*s2))) {
+        s1++;
+        s2++;
+        max--;
+   }
+   if(max != 0) return ((unsigned char)*s1) - ((unsigned char)*s2);
+   return 0;
 }
 char* shift_args(int* argc, char*** argv) {
     return (*argc) <= 0 ? NULL : ((*argc)--, *((*argv)++));
@@ -238,8 +239,16 @@ int main(int argc, char** argv) {
     if(!content_data) return 1;
     char* content = content_data;
     bool quirks_mode = true;
-    if(!memcmp(content, "<!DOCTYPE html>", 15)) {
-        content += 15;
+    if(strncmp_ci(content, "<!DOCTYPE", 9) == 0) {
+        content += 9;
+        while(isspace(*content)) content++;
+        if(strncmp_ci(content, "html", 4) != 0) todof("Unsupported DOCTYPE: `%.*s`", 4, content);
+        content += 4;
+        while(*content && *content != '>') content++;
+        if(*content != '>') {
+            todof("Unterminated DOCTYPE html");
+        }
+        content++;
         quirks_mode = false;
     }
     (void) quirks_mode;
@@ -276,7 +285,16 @@ int main(int argc, char** argv) {
         }
     }
     if(node != &root) {
-        fprintf(stderr, "WARN: Some unclosed tags.\n");
+        HTMLTag* ct = node;
+        fprintf(stderr, "WARN: Some unclosed tags:\n");
+        while(ct != &root) {
+            if(!ct->name) {
+                fprintf(stderr, "- <unnamed>\n");
+                continue;
+            }
+            fprintf(stderr, "- %.*s\n", (int)ct->name_len, ct->name);
+            ct = ct->parent;
+        }
     }
     dump_html_tag(node, 0);
 

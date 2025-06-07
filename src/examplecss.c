@@ -28,10 +28,10 @@ int cssmain(){
         printf("\n----\"%.*s\"-----\n", (int)node->name_len, node->name_content);
         if(node->attrs.len > 0) printf("attrs:\n");
         for(size_t j = 0; j < node->attrs.len; j++){
-            CSSAttr* attr = &node->attrs.items[j];
+            CSSAttribute* attr = &node->attrs.items[j];
             printf("name: %.*s, values: ", (int)attr->name_len, attr->name_content);
             for(size_t m = 0; m < attr->values.len; m++){
-                CSSAttrVal* attrVal = &attr->values.items[m];
+                CSSAttributeValue* attrVal = &attr->values.items[m];
                 printf("%.*s ", (int)attrVal->value_len, attrVal->value_content);
             }
             printf("\n");

@@ -114,7 +114,7 @@ int expect_special_lexem(const char* content, char ch, char** end){
     return 0;
 }
 
-int parse_css_attr(const char* content, CSSAttr* out, char** end){
+int parse_css_attribute(const char* content, CSSAttribute* out, char** end){
     char* cur = (char*)content;
     CSSLexem lexem = {0};
     int result = chop_css_lexem(cur,&lexem, &cur);
@@ -128,7 +128,7 @@ int parse_css_attr(const char* content, CSSAttr* out, char** end){
     result = expect_special_lexem(cur, ':', &cur);
     if(result < 0) return result;
 
-    CSSAttrVals vals = {0};
+    CSSAttributeValues vals = {0};
     
     while(true){
         result = chop_css_lexem(cur,&lexem, &cur);
@@ -147,7 +147,7 @@ int parse_css_attr(const char* content, CSSAttr* out, char** end){
             return -CSSERR_UNEXPECTED_LEXEM;
         }
 
-        da_push(&vals, ((CSSAttrVal){.value_content = lexem.content, .value_len = lexem.len}));
+        da_push(&vals, ((CSSAttributeValue){.value_content = lexem.content, .value_len = lexem.len}));
     }
 
     out->values = vals;
@@ -169,11 +169,11 @@ int parse_css_node(const char* content, CSSNode* out, char** end){
     result = expect_special_lexem(cur, '{', &cur);
     if(result < 0) return result;
 
-    CSSAttrs attrs = {0};
-    CSSAttr attr = {0};
+    CSSAttributes attrs = {0};
+    CSSAttribute attr = {0};
 
     while(true){
-        result = parse_css_attr(cur, &attr, &cur);
+        result = parse_css_attribute(cur, &attr, &cur);
         if(result == 1) break;
         if(result < 0) {
             CSS_FREE(attrs.items);

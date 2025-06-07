@@ -6,35 +6,36 @@
 typedef struct {
     char* value_content;
     size_t value_len;
-} CSSAttrVal;
+} CSSAttributeValue;
 
 typedef struct{
-    CSSAttrVal* items;
-    size_t len,cap;
-} CSSAttrVals;
+    CSSAttributeValue* items;
+    size_t len, cap;
+} CSSAttributeValues;
 
 typedef struct{
     const char* name_content;
     size_t name_len;
-    CSSAttrVals values;
-} CSSAttr;
+    CSSAttributeValues values;
+} CSSAttribute;
 
 typedef struct{
-    CSSAttr* items;
-    size_t len,cap;
-} CSSAttrs;
+    CSSAttribute* items;
+    size_t len, cap;
+} CSSAttributes;
 
 typedef struct {
     const char* name_content;
     size_t name_len;
-    CSSAttrs attrs;
+    CSSAttributes attrs;
 } CSSNode;
 
 typedef struct {
     CSSNode* items;
-    size_t len,cap;
+    size_t len, cap;
 } CSSNodes;
 
+int parse_css_attribute(const char* content, CSSAttribute* out, char** end);
 int parse_css_node(const char* content, CSSNode* out, char** end);
 int parse_css_file(const char* content, CSSNodes* outNodes);
 
